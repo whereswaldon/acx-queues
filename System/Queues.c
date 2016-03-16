@@ -1,26 +1,34 @@
 #include <avr/io.h>
 #include "System.h"
 #include "Queues.h"
-
-char data1[64];
-char data2[64];
+#include <stdio.h>
 
 QCB queues[QCB_MAX_COUNT];
 byte allocated[QCB_MAX_COUNT];
+
+/*
+ * Dumps the contents of the queue with the given id
+ */
+void Q_dump(byte qid) {
+    QCB* queue = &queues[qid];
+    printf("%d: in: %x out: %x available: %d mask: %x contents: %s\n", qid, queue->in, queue->out, queue->available, queue->smask, queue->pQ);
+}
 
 /*
  * Attempts to write 1 byte to specified queue. returns 1 if successful, 0 if queue is full
  */
 byte Q_putc(byte qid, char data) {
     QCB* queue = &queues[qid];
-	if (queue->available == sizeof(queue->pQ)) {
+	if (queue->flags == Q_FULL) {
 		return 0; //queue is full, failed to write
 	}
 	queue->pQ[queue->in++] = data;
+	queue->in &= queue->smask;
 	queue->available++;
-	if(queue->available == sizeof(queue->pQ)) {
+	if(queue->available > 0 && queue->in == queue->out) {
 		queue->flags = Q_FULL;
 	}
+	Q_dump(qid);
 	return 1;
 }
 
@@ -32,12 +40,28 @@ byte Q_getc(byte qid, char *pdata ) {
 	if (queue->in == queue->out && queue->flags == Q_EMPTY) {
 		return 0; //queue is empty
 	}
-	*pdata = queue->pQ[queue->out--];
-	if (queue->out == queue->in) {
+	*pdata = queue->pQ[queue->out++];
+	queue->out &= queue->smask;
+	
+	queue->available--;
+	
+	if (queue->out == queue->in && queue->available == 0) {
 		queue->flags = Q_EMPTY;
 	}
-	queue->available--;
+	
+	Q_dump(qid);
 	return 1;
+}
+
+/*
+ * compute the log base two of the integer
+ */
+int log_2(int n) {
+    int result = 0;
+    while (n >>= 1) {
+        result++;
+    }
+    return result;
 }
 
 /*
@@ -62,12 +86,15 @@ byte Q_create(int qsize, char * pbuffer) {
     if (allFull) {
         return -1; //all queues full
     }
+    
+    byte mask = 0xFF >> (8 - log_2(qsize));
+    
     allocated[found] = 1;
     queues[found].in = 0;
     queues[found].out = 0;
-    queues[found].smask = 0xFF;
+    queues[found].smask = mask;
     queues[found].flags = Q_EMPTY;
-    queues[found].available = qsize;
+    queues[found].available = 0;
     queues[found].pQ = pbuffer;
     
     return found;
