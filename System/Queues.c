@@ -2,8 +2,8 @@
 #include "System.h"
 #include "Queues.h"
 
-char* data1[64];
-char* data2[64];
+char data1[64];
+char data2[64];
 
 QCB queues[QCB_MAX_COUNT];
 byte allocated[QCB_MAX_COUNT];
@@ -16,7 +16,7 @@ byte Q_putc(byte qid, char data) {
 	if (queue->available == sizeof(queue->pQ)) {
 		return 0; //queue is full, failed to write
 	}
-	
+	queue->pQ[queue->in++] = data;
 	queue->available++;
 	if(queue->available == sizeof(queue->pQ)) {
 		queue->flags = Q_FULL;
@@ -32,8 +32,7 @@ byte Q_getc(byte qid, char *pdata ) {
 	if (queue->in == queue->out && queue->flags == Q_EMPTY) {
 		return 0; //queue is empty
 	}
-	byte read = queue->pQ[queue->out--];
-	*pdata = read;
+	*pdata = queue->pQ[queue->out--];
 	if (queue->out == queue->in) {
 		queue->flags = Q_EMPTY;
 	}
@@ -53,7 +52,7 @@ byte Q_create(int qsize, char * pbuffer) {
             return -1; //invalid size
     }
     byte allFull = 1;
-    byte found = -1;
+    int found = -1;
     for (int i = 0; i < QCB_MAX_COUNT; i ++) {
         allFull &= allocated[i];
         if (found == -1 && allocated[i] == 0) {
@@ -63,15 +62,13 @@ byte Q_create(int qsize, char * pbuffer) {
     if (allFull) {
         return -1; //all queues full
     }
-    QCB* queue = &queues[found];
     allocated[found] = 1;
-    
-    queue->in = 0;
-    queue->out = 0;
-    queue->smask = 0xFF;
-    queue->flags = Q_EMPTY;
-    queue->available = qsize;
-    queue->pQ = pbuffer;
+    queues[found].in = 0;
+    queues[found].out = 0;
+    queues[found].smask = 0xFF;
+    queues[found].flags = Q_EMPTY;
+    queues[found].available = qsize;
+    queues[found].pQ = pbuffer;
     
     return found;
 }
