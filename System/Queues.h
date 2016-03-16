@@ -49,5 +49,5 @@ byte Q_create(int , char * );
 void Q_delete(byte);
 int Q_used(byte);
 int Q_unused(byte);
-
+int log_2(int);
 #endif /* QUEUES_H_ */
