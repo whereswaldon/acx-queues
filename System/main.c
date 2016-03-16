@@ -17,14 +17,14 @@ int main(void)
         printf("%d\n", qid);
         char in = 'a';
         char out;
-        for (int i = 0; i < 26; i++) {
-            if (!Q_putc(qid, in+i)) {
-                printf("Error writing char %c on iteration %d\n", in+i, i);
+        for (int i = 0; i < 1000; i++) {
+            if (!Q_putc(qid, in+(i%26))) {
+                printf("Error writing char %c on iteration %d\n", in+(i%26), i);
             }
             if (!Q_getc(qid, &out)) {
                 printf("Error reading char %c on iteration %d\n", out, i);
             }
-            printf("Wrote %c, Read %c\n", in+i, out);
-        }
+        printf("Wrote %c, Read %c\n", in+(i%26), out);
+    }
 }
 
